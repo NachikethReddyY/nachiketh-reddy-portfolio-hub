@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,54 +8,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ExternalLink, Github, Search, Filter } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProjectsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [techFilter, setTechFilter] = useState('all');
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const allProjects = [
-    {
-      title: "Personal Brand Website",
-      description: "A modern, responsive personal brand website built with React and Tailwind CSS. Features blog functionality, project showcase, and contact management.",
-      tags: ["React", "Tailwind CSS", "TypeScript", "Responsive Design"],
-      githubUrl: "https://github.com/yourusername/personal-website",
-      liveUrl: "https://nachikethreddy.github.io",
-      status: "In Progress"
-    },
-    {
-      title: "Learning Management System",
-      description: "A comprehensive platform for managing courses, certificates, and learning progress. Built with modern web technologies.",
-      tags: ["React", "Node.js", "MongoDB", "Express"],
-      githubUrl: "https://github.com/yourusername/lms-project",
-      liveUrl: "#",
-      status: "Planned"
-    },
-    {
-      title: "Personal CRM Dashboard",
-      description: "A custom CRM solution for managing personal and professional contacts, tracking interactions, and building meaningful relationships.",
-      tags: ["React", "TypeScript", "Supabase", "Analytics"],
-      githubUrl: "https://github.com/yourusername/personal-crm",
-      liveUrl: "#",
-      status: "Planned"
-    },
-    {
-      title: "E-commerce Platform",
-      description: "A full-stack e-commerce solution with payment integration, inventory management, and admin dashboard.",
-      tags: ["Next.js", "TypeScript", "Stripe", "PostgreSQL"],
-      githubUrl: "https://github.com/yourusername/ecommerce",
-      liveUrl: "#",
-      status: "Completed"
-    },
-    {
-      title: "Task Management App",
-      description: "A collaborative task management application with real-time updates and team collaboration features.",
-      tags: ["React", "Firebase", "Material-UI", "Real-time"],
-      githubUrl: "https://github.com/yourusername/task-manager",
-      liveUrl: "#",
-      status: "Completed"
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAllProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -70,15 +50,15 @@ const ProjectsPage = () => {
     }
   };
 
-  const allTechs = [...new Set(allProjects.flatMap(project => project.tags))];
+  const allTechs = [...new Set(allProjects.flatMap(project => project.technologies || []))];
 
   const filteredProjects = allProjects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (project.technologies || []).some((tech: string) => tech.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-    const matchesTech = techFilter === 'all' || project.tags.includes(techFilter);
+    const matchesTech = techFilter === 'all' || (project.technologies || []).includes(techFilter);
     
     return matchesSearch && matchesStatus && matchesTech;
   });
@@ -91,7 +71,7 @@ const ProjectsPage = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              All <span className="text-gradient">Projects</span>
+              All <span style={{ color: '#FFDE59' }}>Projects</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Explore my complete portfolio of projects, from completed works to ongoing developments.
@@ -140,68 +120,74 @@ const ProjectsPage = () => {
           </div>
 
           {/* Projects Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProjects.map((project, index) => (
-              <Card 
-                key={index}
-                className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-2 border-0 shadow-md dark:bg-gray-800 dark:border-gray-700"
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <CardTitle className="text-xl font-bold dark:text-white">{project.title}</CardTitle>
-                    <Badge className={`${getStatusColor(project.status)} border`}>
-                      {project.status}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-gray-600 dark:text-gray-300">
-                    {project.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {project.tags.map((tag) => (
-                        <span 
-                          key={tag}
-                          className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 dark:text-gray-400 text-lg">Loading projects...</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredProjects.map((project) => (
+                <Card 
+                  key={project.id}
+                  className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-2 border-0 shadow-md dark:bg-gray-800 dark:border-gray-700"
+                >
+                  <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                      <CardTitle className="text-xl font-bold dark:text-white">{project.title}</CardTitle>
+                      <Badge className={`${getStatusColor(project.status)} border`}>
+                        {project.status}
+                      </Badge>
                     </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex-1 border-[#5271FF] text-[#5271FF] hover:bg-[#5271FF] hover:text-white dark:border-[#5271FF] dark:text-[#5271FF] dark:hover:bg-[#5271FF] dark:hover:text-white"
-                        asChild
-                      >
-                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                          <Github className="h-4 w-4 mr-2" />
-                          Code
-                        </a>
-                      </Button>
-                      {project.liveUrl !== '#' && (
+                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                      {project.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {(project.technologies || []).map((tech: string) => (
+                          <span 
+                            key={tech}
+                            className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                      
+                      <div className="flex space-x-2">
                         <Button 
+                          variant="outline" 
                           size="sm"
-                          className="flex-1 bg-[#5271FF] hover:bg-[#5271FF]/90"
+                          className="flex-1 border-[#5271FF] text-[#5271FF] hover:bg-[#5271FF] hover:text-white dark:border-[#5271FF] dark:text-[#5271FF] dark:hover:bg-[#5271FF] dark:hover:text-white"
                           asChild
                         >
-                          <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Live
+                          <a href={project.github_url} target="_blank" rel="noopener noreferrer">
+                            <Github className="h-4 w-4 mr-2" />
+                            Code
                           </a>
                         </Button>
-                      )}
+                        {project.live_url !== '#' && (
+                          <Button 
+                            size="sm"
+                            className="flex-1 bg-[#5271FF] hover:bg-[#5271FF]/90"
+                            asChild
+                          >
+                            <a href={project.live_url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Live
+                            </a>
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          {filteredProjects.length === 0 && (
+          {!loading && filteredProjects.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 text-lg">
                 No projects found matching your filters.

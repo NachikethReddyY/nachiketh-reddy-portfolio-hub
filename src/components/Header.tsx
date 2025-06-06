@@ -29,11 +29,23 @@ const Header = () => {
     { label: 'Projects', href: '/projects' },
     { label: 'Blog', href: '/blog' },
     { label: 'Certificates', href: '/certificates' },
-    { label: 'CRM', href: '/blog-crm' },
     { label: 'Contact', href: '#contact' },
   ];
 
   const isHomePage = location.pathname === '/';
+
+  const handleContactClick = (e: React.MouseEvent) => {
+    if (!isHomePage) {
+      // If not on home page, navigate to home with contact hash
+      return;
+    }
+    // If on home page, scroll to contact section
+    e.preventDefault();
+    const contactSection = document.getElementById('contact');
+    if (contactSection) {
+      contactSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
@@ -41,7 +53,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex-shrink-0">
             <Link to="/">
-              <h1 className="text-xl font-bold text-gradient">Nachiketh Reddy</h1>
+              <h1 className="text-xl font-bold text-[#FFDE59]">Nachiketh Reddy</h1>
             </Link>
           </div>
           
@@ -49,10 +61,11 @@ const Header = () => {
           <nav className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
               {menuItems.map((item) => (
-                item.href.startsWith('#') && !isHomePage ? (
+                item.href === '#contact' ? (
                   <Link
                     key={item.label}
-                    to={`/${item.href}`}
+                    to={isHomePage ? item.href : `/${item.href}`}
+                    onClick={handleContactClick}
                     className="text-gray-700 dark:text-gray-300 hover:text-[#5271FF] dark:hover:text-[#5271FF] px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
                   >
                     {item.label}
@@ -102,9 +115,12 @@ const Header = () => {
             {menuItems.map((item) => (
               <Link
                 key={item.label}
-                to={item.href}
+                to={item.href === '#contact' && !isHomePage ? `/${item.href}` : item.href}
+                onClick={(e) => {
+                  if (item.href === '#contact') handleContactClick(e);
+                  setIsMenuOpen(false);
+                }}
                 className="text-gray-700 dark:text-gray-300 hover:text-[#5271FF] dark:hover:text-[#5271FF] block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
               >
                 {item.label}
               </Link>

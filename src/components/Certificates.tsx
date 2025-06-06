@@ -1,49 +1,37 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Award, Calendar } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ExternalLink, Award, Calendar, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Certificates = () => {
-  const certificates = [
-    {
-      title: "React Developer Certification",
-      issuer: "Meta",
-      date: "2024-01-20",
-      description: "Comprehensive certification covering React fundamentals, hooks, state management, and best practices.",
-      skills: ["React", "JavaScript", "State Management", "Component Design"],
-      credentialUrl: "https://coursera.org/verify/certificate",
-      status: "Completed"
-    },
-    {
-      title: "Full Stack Web Development",
-      issuer: "freeCodeCamp",
-      date: "2023-12-15",
-      description: "Complete full-stack development program covering both frontend and backend technologies.",
-      skills: ["HTML", "CSS", "JavaScript", "Node.js", "MongoDB"],
-      credentialUrl: "https://freecodecamp.org/certification",
-      status: "Completed"
-    },
-    {
-      title: "Cloud Computing Fundamentals",
-      issuer: "AWS",
-      date: "2024-02-01",
-      description: "Introduction to cloud computing concepts, AWS services, and cloud architecture principles.",
-      skills: ["AWS", "Cloud Computing", "Infrastructure", "DevOps"],
-      credentialUrl: "#",
-      status: "In Progress"
-    },
-    {
-      title: "Data Structures and Algorithms",
-      issuer: "Coursera",
-      date: "2024-03-01",
-      description: "Advanced course covering data structures, algorithms, and problem-solving techniques.",
-      skills: ["Algorithms", "Data Structures", "Problem Solving", "Optimization"],
-      credentialUrl: "#",
-      status: "Planned"
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCertificates();
+  }, []);
+
+  const fetchCertificates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('certificates')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(4);
+
+      if (error) throw error;
+      setCertificates(data || []);
+    } catch (error) {
+      console.error('Error fetching certificates:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -58,12 +46,24 @@ const Certificates = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <section id="certificates" className="py-20 bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-gray-600 dark:text-gray-300">Loading certificates...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="certificates" className="py-20 bg-white dark:bg-gray-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4 dark:text-white">
-            <span className="text-gradient">Certificates</span> & Achievements
+            <span style={{ color: '#FFDE59' }}>Certificates</span> & Achievements
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             My continuous learning journey documented through certifications and achievements.
@@ -71,9 +71,9 @@ const Certificates = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {certificates.map((cert, index) => (
+          {certificates.map((cert) => (
             <Card 
-              key={index}
+              key={cert.id}
               className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-0 shadow-md bg-white dark:bg-gray-800"
             >
               <CardHeader>
@@ -109,7 +109,7 @@ const Certificates = () => {
                   <div>
                     <h4 className="font-medium mb-2 text-gray-800 dark:text-gray-200">Skills Covered:</h4>
                     <div className="flex flex-wrap gap-2">
-                      {cert.skills.map((skill) => (
+                      {cert.skills?.map((skill: string) => (
                         <span 
                           key={skill}
                           className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
@@ -120,19 +120,48 @@ const Certificates = () => {
                     </div>
                   </div>
                   
-                  {cert.credentialUrl !== '#' && cert.status === 'Completed' && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full border-[#5271FF] text-[#5271FF] hover:bg-[#5271FF] hover:text-white"
-                      asChild
-                    >
-                      <a href={cert.credentialUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Credential
-                      </a>
-                    </Button>
-                  )}
+                  <div className="flex space-x-2">
+                    {cert.certificate_image_url && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="flex-1 border-[#FFDE59] text-[#FFDE59] hover:bg-[#FFDE59] hover:text-black"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Certificate
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle>{cert.title}</DialogTitle>
+                          </DialogHeader>
+                          <div className="flex justify-center">
+                            <img 
+                              src={cert.certificate_image_url} 
+                              alt={cert.title}
+                              className="max-w-full max-h-[60vh] object-contain"
+                            />
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                    
+                    {cert.credential_url !== '#' && cert.status === 'Completed' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className={`${cert.certificate_image_url ? 'flex-1' : 'w-full'} border-[#5271FF] text-[#5271FF] hover:bg-[#5271FF] hover:text-white`}
+                        asChild
+                      >
+                        <a href={cert.credential_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Credential
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

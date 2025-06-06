@@ -1,77 +1,55 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, ArrowRight, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { supabase } from '@/integrations/supabase/client';
 
 const BlogPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedTag, setSelectedTag] = useState('all');
+  const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: "Starting My Personal Brand Journey",
-      excerpt: "Why I decided to build my personal brand and document my learning journey online. The importance of having a digital presence in today's world.",
-      content: "Building a personal brand has become increasingly important in today's digital age...",
-      date: "2024-01-15",
-      readTime: "5 min read",
-      tags: ["Personal Branding", "Career", "Digital Presence"],
-      category: "Career",
-      published: true
-    },
-    {
-      id: 2,
-      title: "Building Modern Web Applications with React",
-      excerpt: "A comprehensive guide to building scalable and maintainable React applications. Best practices, tools, and techniques I've learned.",
-      content: "React has revolutionized the way we build user interfaces...",
-      date: "2024-01-10",
-      readTime: "8 min read",
-      tags: ["React", "Web Development", "JavaScript"],
-      category: "Technology",
-      published: true
-    },
-    {
-      id: 3,
-      title: "The Power of Continuous Learning",
-      excerpt: "How I stay updated with the latest technology trends and why continuous learning is crucial for personal and professional growth.",
-      content: "In the rapidly evolving world of technology...",
-      date: "2024-01-05",
-      readTime: "6 min read",
-      tags: ["Learning", "Growth", "Technology"],
-      category: "Learning",
-      published: true
-    },
-    {
-      id: 4,
-      title: "Understanding Machine Learning Basics",
-      excerpt: "An introduction to machine learning concepts, algorithms, and practical applications in modern software development.",
-      content: "Machine learning is transforming industries...",
-      date: "2024-02-01",
-      readTime: "10 min read",
-      tags: ["Machine Learning", "AI", "Data Science"],
-      category: "Technology",
-      published: true
+  useEffect(() => {
+    fetchBlogPosts();
+  }, []);
+
+  const fetchBlogPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('published', true)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      setBlogPosts(data || []);
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const categories = ['all', 'Technology', 'Career', 'Learning'];
-  const allTags = [...new Set(blogPosts.flatMap(post => post.tags))];
+  const categories = ['all', ...new Set(blogPosts.map(post => post.category))];
+  const allTags = [...new Set(blogPosts.flatMap(post => post.tags || []))];
 
   const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (post.tags || []).some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    const matchesTag = selectedTag === 'all' || post.tags.includes(selectedTag);
+    const matchesTag = selectedTag === 'all' || (post.tags || []).includes(selectedTag);
     
-    return matchesSearch && matchesCategory && matchesTag && post.published;
+    return matchesSearch && matchesCategory && matchesTag;
   });
 
   const getCategoryColor = (category: string) => {
@@ -94,7 +72,7 @@ const BlogPage = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-4 dark:text-white">
-              My <span className="text-gradient">Blog</span>
+              My <span style={{ color: '#FFDE59' }}>Blog</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Sharing insights, learnings, and thoughts on technology, career growth, and personal development.
@@ -144,72 +122,80 @@ const BlogPage = () => {
           {/* Results count */}
           <div className="mb-6">
             <p className="text-gray-600 dark:text-gray-300">
-              Showing {filteredPosts.length} of {blogPosts.filter(p => p.published).length} posts
+              Showing {filteredPosts.length} of {blogPosts.length} posts
             </p>
           </div>
 
           {/* Blog Posts Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredPosts.map((post) => (
-              <Card 
-                key={post.id}
-                className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-2 border-0 shadow-md bg-white dark:bg-gray-800"
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className={`${getCategoryColor(post.category)} border`}>
-                      {post.category}
-                    </Badge>
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {post.readTime}
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl font-bold group-hover:text-[#5271FF] transition-colors dark:text-white">
-                    {post.title}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 dark:text-gray-300">
-                    {post.excerpt}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {post.tags.map((tag) => (
-                        <span 
-                          key={tag}
-                          className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 dark:text-gray-400 text-lg">Loading blog posts...</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredPosts.map((post) => (
+                <Card 
+                  key={post.id}
+                  className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-2 border-0 shadow-md bg-white dark:bg-gray-800"
+                >
+                  <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge className={`${getCategoryColor(post.category)} border`}>
+                        {post.category}
+                      </Badge>
                       <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {new Date(post.date).toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
+                        <Clock className="h-4 w-4 mr-1" />
+                        {post.read_time}
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-[#5271FF] hover:text-[#5271FF] hover:bg-[#5271FF]/10 p-0"
-                      >
-                        Read More
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardTitle className="text-xl font-bold group-hover:text-[#5271FF] transition-colors dark:text-white">
+                      {post.title}
+                    </CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                      {post.excerpt}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {(post.tags || []).map((tag: string) => (
+                          <span 
+                            key={tag}
+                            className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {new Date(post.date).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                        <Link to={`/blog/${post.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-[#5271FF] hover:text-[#5271FF] hover:bg-[#5271FF]/10 p-0"
+                          >
+                            Read More
+                            <ArrowRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          {filteredPosts.length === 0 && (
+          {!loading && filteredPosts.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 text-lg">
                 No blog posts found matching your criteria.

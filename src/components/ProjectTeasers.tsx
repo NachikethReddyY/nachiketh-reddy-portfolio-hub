@@ -1,31 +1,37 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProjectTeasers = () => {
-  const featuredProjects = [
-    {
-      title: "Personal Brand Website",
-      description: "A modern, responsive personal brand website built with React and Tailwind CSS.",
-      tags: ["React", "Tailwind CSS", "TypeScript"],
-      status: "In Progress"
-    },
-    {
-      title: "Learning Management System",
-      description: "A comprehensive platform for managing courses, certificates, and learning progress.",
-      tags: ["React", "Node.js", "MongoDB"],
-      status: "Planned"
-    },
-    {
-      title: "Personal CRM Dashboard",
-      description: "A custom CRM solution for managing personal and professional contacts.",
-      tags: ["React", "TypeScript", "Supabase"],
-      status: "Planned"
+  const [featuredProjects, setFeaturedProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedProjects();
+  }, []);
+
+  const fetchFeaturedProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('featured', true)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+      setFeaturedProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching featured projects:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -40,12 +46,24 @@ const ProjectTeasers = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <section className="py-20 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-gray-600 dark:text-gray-300">Loading projects...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Featured <span className="text-gradient">Projects</span>
+            Featured <span style={{ color: '#FFDE59' }}>Projects</span>
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             A glimpse into my current and upcoming projects.
@@ -53,9 +71,9 @@ const ProjectTeasers = () => {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {featuredProjects.map((project, index) => (
+          {featuredProjects.map((project) => (
             <Card 
-              key={index}
+              key={project.id}
               className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-2 border-0 shadow-md dark:bg-gray-800 dark:border-gray-700"
             >
               <CardHeader>
@@ -71,12 +89,12 @@ const ProjectTeasers = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {project.tags.map((tag) => (
+                  {project.technologies?.map((tech: string) => (
                     <span 
-                      key={tag}
+                      key={tech}
                       className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
                     >
-                      {tag}
+                      {tech}
                     </span>
                   ))}
                 </div>
